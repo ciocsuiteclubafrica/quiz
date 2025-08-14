@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>The CIO & C-Suite Club Africa Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #111827;
+            color: #f3f4f6;
+        }
+        .container { max-width: 800px; }
+        .bg-card { background-color: #1f2937; }
+        .btn-primary { background-color: #992b10; color: #fff; }
+        .btn-primary:hover { background-color: #7a210c; }
+        .btn-secondary { background-color: #4b5563; color: #fff; }
+        .btn-secondary:hover { background-color: #374151; }
+        .correct-answer { background-color: #10b981 !important; color: white; }
+        .incorrect-answer { background-color: #ef4444 !important; color: white; }
+        .leaderboard-table { width: 100%; border-collapse: collapse; }
+        .leaderboard-table th, .leaderboard-table td {
+            padding: 12px; text-align: left; border-bottom: 1px solid #374151;
+        }
+        .leaderboard-table th { background-color: #374151; }
+    </style>
+</head>
+<body class="p-4 flex items-center justify-center min-h-screen">
+    <div id="app" class="container mx-auto p-8 rounded-xl shadow-lg bg-card border border-gray-700"></div>
+
+    <script>
+        // ========================
+        // 1. FIREBASE CONFIG HERE
+        // ========================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDsvi6uzZUc6Enw6XqCKCDpZqw85z-O8rw",
+            authDomain: "ciocsuiteclubafrica.firebaseapp.com",
+            projectId: "ciocsuiteclubafrica",
+            storageBucket: "ciocsuiteclubafrica.firebasestorage.app",
+            messagingSenderId: "877177215657",
+            appId: "1:877177215657:web:3e373f7cf481a573d867b8"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // ========================
+        // 2. QUIZ QUESTIONS
+        // ========================
+        const quizQuestions = [
+            { question: "In business strategy, what does 'ROI' stand for?", options: ["Return on Innovation", "Rate of Interest", "Return on Investment", "Revenue on Input"], answer: "Return on Investment" },
+            { question: "Which tech giant's motto was once 'Don’t be evil'?", options: ["Apple", "Google", "Microsoft", "Amazon"], answer: "Google" },
+            { question: "What’s the first thing many CIOs check in the morning?", options: ["Emails & dashboards", "Social media", "Weather forecast", "Company cafeteria menu"], answer: "Emails & dashboards" },
+            { question: "In cloud computing, what does 'SaaS' stand for?", options: ["Software as a Service", "Storage as a Solution", "Security as a Service", "System as a Service"], answer: "Software as a Service" },
+            { question: "Which African country is home to the fastest-growing tech hub ecosystem?", options: ["South Africa", "Kenya", "Nigeria", "Egypt"], answer: "Nigeria" },
+            { question: "In project management, the 'Agile' methodology emphasizes:", options: ["Strict documentation", "Flexible, iterative development", "Long planning cycles", "No meetings"], answer: "Flexible, iterative development" },
+            { question: "What’s the global term for the person who leads a company’s technology strategy?", options: ["CTO", "CIO", "COO", "CFO"], answer: "CIO" },
+            { question: "Which 2023 trend was ranked a top priority for CIOs worldwide?", options: ["AI & Machine Learning", "Fax machine upgrades", "Personalized emojis", "Typewriter refurbishing"], answer: "AI & Machine Learning" },
+            { question: "In cybersecurity, a 'zero-day' refers to:", options: ["A system outage with no backup", "A newly discovered vulnerability with no fix yet", "A day with zero emails", "A holiday for IT teams"], answer: "A newly discovered vulnerability with no fix yet" },
+            { question: "What year was the very first CIO appointed?", options: ["1981", "1995", "2005", "1972"], answer: "1981" }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let userName = '';
+        let timer = null;
+        let timeLeft = 15;
+        const app = document.getElementById('app');
+
+        window.onload = () => renderWelcomeScreen();
+
+        function shuffleArray(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function renderWelcomeScreen() {
+            app.innerHTML = `
+                <div class="text-center">
+                    <img src="YOUR_LOGO.png" alt="Logo" class="mx-auto mb-4 w-32 h-32 object-contain">
+                    <h1 class="text-4xl font-bold mb-4 text-[#ffde59]">The CIO & C-Suite Club Africa Quiz 🏆</h1>
+                    <p class="text-lg text-gray-300 mb-6">Fun, fast, and competitive! Test your tech & business knowledge.</p>
+                    <input type="text" id="userNameInput" placeholder="Enter your name" class="w-full md:w-2/3 px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 mb-4">
+                    <button onclick="startGame()" class="btn-primary w-full md:w-1/2 py-3 rounded-md text-lg font-semibold">Start Quiz</button>
+                    <button onclick="renderLeaderboard()" class="btn-secondary w-full md:w-1/2 py-3 mt-4 rounded-md text-lg font-semibold">View Leaderboard</button>
+                </div>
+            `;
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= quizQuestions.length) { endGame(); return; }
+            const q = quizQuestions[currentQuestionIndex];
+            app.innerHTML = `
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl font-bold text-white">Question ${currentQuestionIndex + 1} of ${quizQuestions.length}</h2>
+                    <p class="text-lg text-gray-400 mt-2">Time left: <span id="timer" class="font-bold text-red-400">15</span>s</p>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                        <div id="progressBar" class="bg-[#ffde59] h-2.5 rounded-full" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <div class="p-6 bg-gray-800 rounded-lg shadow-md border border-gray-700">
+                    <p class="text-xl font-medium mb-6 text-gray-200">${q.question}</p>
+                    <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${q.options.map(opt => `
+                            <button class="option-btn bg-gray-700 text-white border border-gray-600 rounded-lg p-4 text-left hover:bg-gray-600"
+                                data-option="${opt}">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.querySelectorAll('.option-btn').forEach(btn => btn.addEventListener('click', handleAnswer));
+            startTimer();
+        }
+
+        function renderLeaderboard() {
+            db.ref('leaderboard').orderByChild('score').limitToLast(10).once('value', snapshot => {
+                let leaderboard = [];
+                snapshot.forEach(child => leaderboard.push(child.val()));
+                leaderboard.reverse();
+                app.innerHTML = `
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-bold text-[#ffde59]">Leaderboard 🥇</h2>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-700">
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-gray-300">Rank</th>
+                                    <th class="text-gray-300">Name</th>
+                                    <th class="text-gray-300">Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${leaderboard.map((p, i) => `
+                                    <tr class="${i % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'}">
+                                        <td class="font-bold text-lg text-[#ffde59]">${i + 1}</td>
+                                        <td>${p.name}</td>
+                                        <td>${p.score}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-6">
+                        <button onclick="renderWelcomeScreen()" class="btn-primary w-full md:w-1/2 py-3 rounded-md text-lg font-semibold">Back to Home</button>
+                    </div>
+                `;
+            });
+        }
+
+        function renderEndScreen() {
+            app.innerHTML = `
+                <div class="text-center">
+                    <h2 class="text-4xl font-bold text-white mb-4">Quiz Complete! 🎉</h2>
+                    <p class="text-2xl text-gray-300 mb-6">${userName}, your final score is: <span class="font-extrabold text-green-400">${score}</span></p>
+                    <button onclick="renderWelcomeScreen()" class="btn-primary w-full md:w-1/2 py-3 rounded-md text-lg font-semibold">Play Again</button>
+                    <button onclick="renderLeaderboard()" class="btn-secondary w-full md:w-1/2 py-3 mt-4 rounded-md text-lg font-semibold">View Leaderboard</button>
+                </div>
+            `;
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+
+        function startGame() {
+            userName = document.getElementById('userNameInput').value.trim();
+            if (!userName) { alert('Please enter your name!'); return; }
+            currentQuestionIndex = 0;
+            score = 0;
+            shuffleArray(quizQuestions);
+            renderQuestion();
+        }
+
+        function handleAnswer(e) {
+            clearInterval(timer);
+            const selected = e.target.getAttribute('data-option');
+            const correct = quizQuestions[currentQuestionIndex].answer;
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.disabled = true;
+                if (btn.getAttribute('data-option') === correct) btn.classList.add('correct-answer');
+                else if (btn.getAttribute('data-option') === selected) btn.classList.add('incorrect-answer');
+            });
+            if (selected === correct) score++;
+            setTimeout(() => { currentQuestionIndex++; renderQuestion(); }, 1500);
+        }
+
+        function startTimer() {
+            timeLeft = 15;
+            const progressBar = document.getElementById('progressBar');
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = timeLeft;
+            progressBar.style.width = '100%';
+            timer = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = timeLeft;
+                progressBar.style.width = `${(timeLeft / 15) * 100}%`;
+                if (timeLeft <= 0) { clearInterval(timer); currentQuestionIndex++; renderQuestion(); }
+            }, 1000);
+        }
+
+        function endGame() {
+            saveScore(userName, score);
+            renderEndScreen();
+        }
+
+        function saveScore(name, score) {
+            db.ref('leaderboard').push({ name, score });
+        }
+    </script>
+</body>
+</html>
