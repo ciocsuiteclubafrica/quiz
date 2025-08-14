@@ -59,10 +59,13 @@
 </head>
 <body class="p-4 flex flex-col items-center justify-center min-h-screen">
     <div class="logo-container mb-8 w-48">
-        <img id="logo" src="YOUR_LOGO_URL_HERE" alt="The CIO & C-Suite Club Africa Logo" class="w-full h-auto">
+        <img id="logo" src="logo.png" alt="The CIO & C-Suite Club Africa Logo" class="w-full h-auto">
     </div>
     <div id="app" class="container mx-auto p-8 rounded-xl shadow-lg bg-card border border-gray-700">
         </div>
+    <footer class="mt-8 text-center text-gray-500 text-sm">
+        <p>Developed by Emmanuel Enwesi for The CIO & C-Suite Club Africa</p>
+    </footer>
     <script>
         // REPLACE THIS URL WITH YOUR DEPLOYED GOOGLE APPS SCRIPT URL
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwNbZhDiCCyUYC-LZ2ZBNqYV4aysWM2WQu2NSMHtsxSYGOtq7pWRKlBZg2I2rRboZsE/exec';
@@ -88,7 +91,7 @@
         const app = document.getElementById('app');
 
         window.onload = () => {
-            document.getElementById('logo').src = "YOUR_LOGO_URL_HERE"; // Set logo source here as well
+            document.getElementById('logo').src = "logo.png"; // Set logo source here as well
             renderWelcomeScreen();
         };
 
@@ -244,7 +247,7 @@
             const progressBar = document.getElementById('progressBar');
             const timerElement = document.getElementById('timer');
             timerElement.textContent = timeLeft;
-            progressBar.style.width = '100%';
+            progressBar.style.width = `${(timeLeft / 15) * 100}%`;
 
             timer = setInterval(() => {
                 timeLeft--;
